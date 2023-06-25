@@ -1,6 +1,7 @@
 package com.example.weatherapp.presenter
 
 import android.os.Bundle
+import android.util.Log
 import android.widget.SearchView.OnQueryTextListener
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -9,10 +10,13 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.weatherapp.R
+import com.example.weatherapp.common.ConnectivityObserver
 import com.example.weatherapp.common.Constant
+import com.example.weatherapp.common.NetworkConnectionManager
 import com.example.weatherapp.common.RecycleViewItemDecorator
-import com.example.weatherapp.common.checkConnection
 import com.example.weatherapp.common.gone
+import com.example.weatherapp.common.isNetworkAvailable
+import com.example.weatherapp.common.makeSnackBar
 import com.example.weatherapp.common.visible
 import com.example.weatherapp.databinding.ActivityMainBinding
 import com.example.weatherapp.domin.Weather
@@ -27,17 +31,21 @@ class MainActivity : AppCompatActivity() {
     lateinit var binding: ActivityMainBinding
     private val viewModel: WeatherViewModel by viewModels()
     lateinit var weatherAdapter: WeatherAdapter
+    private lateinit var connectivityObserver: ConnectivityObserver
 
-    var isConnectAvailable: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        connectivityObserver = NetworkConnectionManager(applicationContext)
         checkNetworkConnection()
         initAdapter()
         searchViewListener()
         observeCityWeather()
+        if(isNetworkAvailable()) {
+            viewModel.getWeatherListFlow()
+        }
     }
 
     private fun initAdapter() {
@@ -71,24 +79,25 @@ class MainActivity : AppCompatActivity() {
 
     private fun getData(newText: String?) {
         newText?.let {
-            viewModel.searchCity(it)
+            if(isNetworkAvailable()) {
+                viewModel.searchCity(it)
+            }else{
+                showError(Constant.NETWORK_ERROR)
+            }
         }
     }
 
     private fun checkNetworkConnection() {
-        lifecycleScope.launchWhenStarted {
-            checkConnection().collect {
-                isConnectAvailable = when (it) {
-                    true -> {
-                        true
-                    }
+        lifecycleScope.launch {
+           connectivityObserver.observe().collect{ status->
+               Log.d("TAG", "checkNetworkConnection: ${status.name}")
+              if(status.name==Constant.NETWORK_AVAILABLE){
+                  viewModel.getWeatherListFlow()
+              }else{
+                  makeSnackBar(getString(R.string.network_error),binding.root)
+              }
 
-                    false -> {
-                        showError(Constant.NETWORK_ERROR)
-                        false
-                    }
-                }
-            }
+           }
         }
     }
 
@@ -119,10 +128,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun showError(showNetworkError: String) {
+    private fun showError(error: String) {
         binding.rv.gone()
         binding.errorMessage.visible()
-        when (showNetworkError) {
+        when (error) {
             Constant.NETWORK_ERROR -> {
                 binding.errorMessage.text = getString(R.string.network_error)
             }

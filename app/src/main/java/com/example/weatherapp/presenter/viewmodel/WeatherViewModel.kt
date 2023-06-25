@@ -23,11 +23,9 @@ class WeatherViewModel @Inject constructor(
     private val _weatherListFlow = MutableStateFlow(WeatherStateFlow())
     val weatherListFlow: StateFlow<WeatherStateFlow> = _weatherListFlow
 
-    init {
-        getWeatherListFlow()
-    }
 
-    private fun getWeatherListFlow() {
+
+    fun getWeatherListFlow() {
         userCase().onEach {
             when (it) {
                 is Resource.Loading -> {
