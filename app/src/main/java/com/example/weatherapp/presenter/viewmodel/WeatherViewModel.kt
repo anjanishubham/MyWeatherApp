@@ -1,68 +1,69 @@
 package com.example.weatherapp.presenter.viewmodel
 
 import android.util.Log
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.example.weatherapp.data.model.WeatherDto
-import com.example.weatherapp.data.model.toWeather
-import com.example.weatherapp.domin.Weather
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.ValueEventListener
+import androidx.lifecycle.viewModelScope
+import com.example.weatherapp.common.Resource
+import com.example.weatherapp.domin.usercase.SearchCityUseCase
+import com.example.weatherapp.domin.usercase.WeatherListUseCase
+import com.example.weatherapp.presenter.WeatherStateFlow
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import javax.inject.Inject
 
 @HiltViewModel
-class WeatherViewModel @Inject constructor(private val databaseReference: DatabaseReference):ViewModel() {
+class WeatherViewModel @Inject constructor(
+    private val userCase: WeatherListUseCase,
+    private val searchCityUseCase: SearchCityUseCase
+) : ViewModel() {
 
-    private val _weatherList = MutableLiveData<List<Weather>>()
-    val weatherList: LiveData<List<Weather>> = _weatherList
+    private val _weatherListFlow = MutableStateFlow(WeatherStateFlow())
+    val weatherListFlow: StateFlow<WeatherStateFlow> = _weatherListFlow
 
-    fun getWeatherList(){
-        databaseReference.addValueEventListener(object : ValueEventListener{
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val list = ArrayList<Weather>()
-                snapshot.children.forEach { item ->
-                   val obj= item.getValue(WeatherDto::class.java)?.toWeather()
-                    obj?.let {
-                        list.add(it)
-                    }
-                }
-                _weatherList.postValue(list)
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-
-            }
-
-        })
+    init {
+        getWeatherListFlow()
     }
 
-    fun getCity(cityName:String){
-        val query = databaseReference.orderByChild("name").startAt(cityName).endAt(cityName +"\uf8ff")
-        query.addValueEventListener(object : ValueEventListener{
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val list = ArrayList<Weather>()
-                if(snapshot.value ==null){
-                    _weatherList.postValue(null)
-                    return
+    private fun getWeatherListFlow() {
+        userCase().onEach {
+            when (it) {
+                is Resource.Loading -> {
+                    _weatherListFlow.value = WeatherStateFlow(true)
                 }
-                snapshot.children.forEach { item ->
-                    val obj= item.getValue(WeatherDto::class.java)?.toWeather()
-                    obj?.let {
-                        list.add(it)
-                    }
+
+                is Resource.Success -> {
+                    _weatherListFlow.value = WeatherStateFlow(weatherList = it.data)
+                    Log.d("TAG", "getWeatherListFlow: ${it.data?.size} ")
                 }
-                _weatherList.postValue(list)
+
+                is Resource.Error -> {
+                    _weatherListFlow.value = WeatherStateFlow(error = it.message)
+                }
             }
-
-            override fun onCancelled(error: DatabaseError) {
-
-            }
-
-        })
+        }.launchIn(viewModelScope)
     }
+
+    fun searchCity(cityName: String) {
+        searchCityUseCase(cityName).onEach {
+            when (it) {
+                is Resource.Loading -> {
+                    _weatherListFlow.value = WeatherStateFlow(true)
+                }
+
+                is Resource.Success -> {
+                    _weatherListFlow.value = WeatherStateFlow(weatherList = it.data)
+                    Log.d("TAG", "getWeatherListFlow: ${it.data?.size} ")
+                }
+
+                is Resource.Error -> {
+                    _weatherListFlow.value = WeatherStateFlow(error = it.message)
+                }
+            }
+        }.launchIn(viewModelScope)
+    }
+
 
 }

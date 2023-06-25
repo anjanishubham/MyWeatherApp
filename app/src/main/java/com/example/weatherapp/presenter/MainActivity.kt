@@ -1,13 +1,10 @@
 package com.example.weatherapp.presenter
 
 import android.os.Bundle
-import android.view.View
 import android.widget.SearchView.OnQueryTextListener
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SearchView
-import androidx.core.view.isVisible
-import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -22,6 +19,7 @@ import com.example.weatherapp.domin.Weather
 import com.example.weatherapp.presenter.adapter.WeatherAdapter
 import com.example.weatherapp.presenter.viewmodel.WeatherViewModel
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
@@ -30,7 +28,7 @@ class MainActivity : AppCompatActivity() {
     private val viewModel: WeatherViewModel by viewModels()
     lateinit var weatherAdapter: WeatherAdapter
 
-    var isConnectAvailable : Boolean = false
+    var isConnectAvailable: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,23 +37,7 @@ class MainActivity : AppCompatActivity() {
         checkNetworkConnection()
         initAdapter()
         searchViewListener()
-        observerWeatherList()
-
-    }
-
-    private fun observerWeatherList() {
-        viewModel.weatherList.observe(this, Observer {
-            if(it == null){
-                showError(Constant.RESULT_NOT_FOUND)
-                return@Observer
-            }
-            it?.let {
-                binding.rv.visible()
-                binding.errorMessage.gone()
-               weatherAdapter.setData(it as ArrayList<Weather>)
-               weatherAdapter.notifyDataSetChanged()
-           }
-        })
+        observeCityWeather()
     }
 
     private fun initAdapter() {
@@ -89,7 +71,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun getData(newText: String?) {
         newText?.let {
-            viewModel.getCity(it)
+            viewModel.searchCity(it)
         }
     }
 
@@ -98,7 +80,6 @@ class MainActivity : AppCompatActivity() {
             checkConnection().collect {
                 isConnectAvailable = when (it) {
                     true -> {
-                        viewModel.getWeatherList()
                         true
                     }
 
@@ -111,20 +92,59 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun observeCityWeather() {
+        lifecycleScope.launch {
+            viewModel.weatherListFlow.collect {
+                if (it.isLoading) {
+                    showLoader()
+                } else if (it.error.isNullOrEmpty().not()) {
+                    hideLoader()
+                    showError("dlskfjdlkj")
+                } else {
+                    hideLoader()
+                    updateUI(it.weatherList as List<Weather>?)
+                }
+            }
+        }
+    }
+
+    private fun updateUI(weatherList: List<Weather>?) {
+        binding.rv.visible()
+        binding.errorMessage.gone()
+        if (weatherList.isNullOrEmpty().not()) {
+            weatherAdapter.setData(weatherList as ArrayList<Weather>)
+            weatherAdapter.notifyDataSetChanged()
+        } else {
+            showError(Constant.RESULT_NOT_FOUND)
+        }
+    }
+
     private fun showError(showNetworkError: String) {
         binding.rv.gone()
         binding.errorMessage.visible()
-        when(showNetworkError){
+        when (showNetworkError) {
             Constant.NETWORK_ERROR -> {
                 binding.errorMessage.text = getString(R.string.network_error)
             }
+
             Constant.RESULT_NOT_FOUND -> {
                 binding.errorMessage.text = getString(R.string.result_not_found)
             }
+
             else -> {
                 binding.errorMessage.gone()
             }
         }
 
     }
+
+    private fun showLoader() {
+        binding.progressCircular.visible()
+    }
+
+    private fun hideLoader() {
+        binding.progressCircular.gone()
+    }
 }
+
+
