@@ -2,20 +2,11 @@ package com.example.weatherapp.common
 
 import android.content.Context
 import android.net.ConnectivityManager
-import android.net.Network
-import android.net.NetworkCapabilities
-import android.net.NetworkRequest
-import android.text.Editable
-import android.text.TextWatcher
-import android.util.Log
 import android.view.View
-import android.widget.EditText
 import com.google.android.material.snackbar.Snackbar
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
 
-fun Context.checkConnection(): Flow<Boolean> = callbackFlow {
+
+/*fun Context.checkConnection(): Flow<Boolean> = callbackFlow {
 
     val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
@@ -25,6 +16,16 @@ fun Context.checkConnection(): Flow<Boolean> = callbackFlow {
 
         override fun onLosing(network: Network, maxMsToLive: Int) {
             super.onLosing(network, maxMsToLive)
+            trySend(false)
+        }
+
+        override fun onLost(network: Network) {
+            super.onLost(network)
+            trySend(false)
+        }
+
+        override fun onUnavailable() {
+            super.onUnavailable()
             trySend(false)
         }
     }
@@ -59,7 +60,7 @@ fun EditText.textChange():Flow<Editable?> = callbackFlow {
     awaitClose {
         removeTextChangedListener(callbacks)
     }
-}
+}*/
 
 fun Context.makeSnackBar(msg: String, view: View) {
     Snackbar.make(view, msg, Snackbar.LENGTH_SHORT).show()
@@ -71,4 +72,11 @@ fun View.visible(){
 
 fun View.gone(){
     this.visibility = View.GONE
+}
+
+fun Context.isNetworkAvailable():Boolean{
+    val connectivityManager =
+        this.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    val activeNetworkInfo = connectivityManager.activeNetworkInfo
+    return activeNetworkInfo != null && activeNetworkInfo.isConnected
 }

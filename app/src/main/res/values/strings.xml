@@ -1,5 +1,5 @@
 <resources>
     <string name="app_name">WeatherApp</string>
     <string name="network_error">Please check or internet connect</string>
-    <string name="result_not_found">Given city is not present in Datbase</string>
+    <string name="result_not_found">City Not Found</string>
 </resources>
