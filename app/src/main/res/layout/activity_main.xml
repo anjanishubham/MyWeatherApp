@@ -9,11 +9,12 @@
     <SearchView
         android:id="@+id/searchViewText"
         android:layout_width="0dp"
+        android:background="@drawable/drawable_search_view_bg"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="@dimen/_16dp"
+        android:paddingHorizontal="@dimen/_16dp"
         android:iconifiedByDefault="false"
         android:queryBackground="@android:color/transparent"
-        android:queryHint="Enter city name"
+        android:queryHint="Enter city name here .."
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
